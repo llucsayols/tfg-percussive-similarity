@@ -1,0 +1,17 @@
+# Entorn virtual
+venv-TFG/
+
+# Fitxers de dades grans
+data/features_wav/
+versions/*/vectors_scaled.npy
+versions/*/scaler.pkl
+versions/*/selector.pkl
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Fitxers temporals
+*.tmp
+*.wav.tmp

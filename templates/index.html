@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Percussion Sample Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+
+<aside class="sidebar">
+    <div class="logo">PSF<br><span>Percussion Sample Finder</span></div>
+
+    <div>
+        <div class="section-label">Paràmetres</div>
+        <div class="param-row">
+            <div class="param-label">Resultats <span id="topk-val">10</span></div>
+            <input type="range" id="topk" min="1" max="15" value="10"
+                   oninput="document.getElementById('topk-val').textContent=this.value">
+        </div>
+        <div class="toggle-row">
+            Mostrar distància
+            <div class="toggle on" id="dist-toggle" onclick="this.classList.toggle('on')"></div>
+        </div>
+    </div>
+
+    <div>
+        <div class="section-label">Representació</div>
+        <div class="version-selector" id="version-selector">
+            {% for vid, info in versions.items() %}
+            <button class="version-btn {% if vid == 'v0' %}active{% endif %}"
+                    onclick="selectVersion('{{ vid }}', this)">
+                <span class="v-id">{{ vid }}</span>{{ info.name }}
+                <span class="v-dims">{{ info.dims }}d</span>
+            </button>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div>
+        <div class="section-label">Índex</div>
+        <div class="stat"><div class="stat-val">{{ n_sons }}</div><div class="stat-label">sons indexats</div></div>
+        <div class="stat" id="dims-stat">
+            <div class="stat-val" id="dims-val">{{ versions['v0'].dims }}</div>
+            <div class="stat-label">dimensions / vector</div>
+        </div>
+    </div>
+
+    <div>
+        <div class="section-label">Historial</div>
+        <div id="history-list"></div>
+    </div>
+</aside>
+
+<main class="main">
+    <header>
+        <h1>Percussion <em>Sample Finder</em></h1>
+        <p>Music Extractor · Distància Cosinus · FSD50K · v1.0</p>
+    </header>
+
+    <div class="input-panel">
+        <div class="input-panel-header">
+            <span class="input-panel-title">Selecciona o grava un sample percussiu per iniciar la cerca per similitud</span>
+        </div>
+
+        <div class="input-panel-body">
+            <div class="tab-panel active" id="tab-upload">
+                <div class="dropzone" id="dropzone"
+                     ondragover="event.preventDefault();this.classList.add('drag-over')"
+                     ondragleave="this.classList.remove('drag-over')"
+                     ondrop="handleDrop(event)">
+                    <input type="file" accept=".wav,.mp3" onchange="handleFile(this.files[0])">
+                    <div class="dropzone-text">Arrossega un fitxer d'àudio o fes clic per seleccionar</div>
+                    <div class="dropzone-hint">WAV · MP3</div>
+                </div>
+            </div>
+
+            <div class="tab-panel" id="tab-record">
+                <div class="record-area">
+                    <div class="record-status" id="rec-status">Preparat per gravar</div>
+                    <div class="record-btn" id="rec-btn" onclick="toggleRecord()">●</div>
+                </div>
+                <audio id="rec-audio" controls style="display:none;width:100%;filter:invert(1) hue-rotate(180deg);margin-top:0.5rem;"></audio>
+            </div>
+
+            <div class="input-mode-tabs">
+                <button class="tab active" onclick="switchTab('upload', this)">Pujar fitxer</button>
+                <button class="tab" onclick="switchTab('record', this)">Gravar</button>
+            </div>
+
+            <div id="waveform-container">
+                <div id="waveform"></div>
+                <div class="wave-controls">
+                    <button class="btn btn-secondary btn-sm" onclick="wavesurfer.playPause()">Play / Pausa</button>
+                    <button class="btn btn-secondary btn-sm" onclick="playRegion()">Play seleccio</button>
+                    <div class="wave-info" id="wave-info">Arrossega per seleccionar un fragment</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-top:0.5rem;">
+                    <span style="font-family:monospace;font-size:0.6rem;color:#666;letter-spacing:0.1em;">ZOOM</span>
+                    <input type="range" min="1" max="200" value="1" style="flex:1;accent-color:#e8ff47;"
+                           oninput="wavesurfer.zoom(Number(this.value))">
+                </div>
+            </div>
+
+            <div class="preview-bar" id="preview-bar" style="display:none;">
+                <audio id="preview-audio" controls></audio>
+            </div>
+
+            <button class="btn btn-primary" id="search-btn" onclick="doSearch()" style="display:none;">
+                Cercar similars
+            </button>
+        </div>
+    </div>
+
+    <div class="spinner" id="spinner">
+        <div class="spinner-ring"></div>
+        Extraient característiques i cercant...
+    </div>
+
+    <div id="results-section">
+        <div class="empty-state">
+            <div class="empty-state-label">Sense resultats</div><br>
+            Puja o grava un sample percussiu per iniciar la cerca per similitud
+        </div>
+    </div>
+</main>
+
+<script src="https://unpkg.com/wavesurfer.js@6.6.4/dist/wavesurfer.min.js"></script>
+<script src="https://unpkg.com/wavesurfer.js@6.6.4/dist/plugin/wavesurfer.regions.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
