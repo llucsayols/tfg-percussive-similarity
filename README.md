@@ -15,6 +15,7 @@ Tutor: Xavier Serra (Music Technology Group, UPF)
 - **Windows 10/11** amb WSL2 (Ubuntu)
 - **Python 3.11** (instal·lat dins de WSL)
 - **ffmpeg** (instal·lat dins de WSL)
+- **Essentia** (Music Technology Group, UPF) — llibreria principal d'extracció de features
 - Dataset **FSD50K** descomprimit localment
 
 ---
@@ -38,6 +39,8 @@ source venv/bin/activate
 ```
 
 ### 3. Instal·la les dependències
+
+El sistema utilitza **Essentia** (desenvolupada pel Music Technology Group de la UPF) com a llibreria principal per a l'extracció de descriptors d'àudio, juntament amb altres llibreries de processament i aprenentatge automàtic:
 
 ```bash
 pip install essentia flask pydub scipy scikit-learn numpy pandas requests librosa transformers torch torchaudio soundfile faiss-cpu
