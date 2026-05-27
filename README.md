@@ -1,6 +1,8 @@
-# Percussive Sample Finder
+# Comparació de Representacions Vectorials d'Àudio per a la Cerca per Similitud en Samples Percussius
 
-Avaluació de mètodes de representació vectorial de sons percussius per a la cerca per similitud. Sistema que permet a productors musicals trobar sons percussius curts similars a un so de referència.
+## Implementació d'una Eina per a Productors Musicals
+
+Sistema que permet a productors musicals trobar sons percussius curts similars a un so de referència, comparant tres mètodes de representació vectorial d'àudio.
 
 Treball Fi de Grau — Enginyeria Audiovisual Computacional, Universitat Pompeu Fabra  
 Autor: Lluc Sayols Hidalgo  
@@ -22,15 +24,17 @@ Tutor: Xavier Serra (Music Technology Group, UPF)
 ### 1. Clona el repositori
 
 ```bash
-git clone https://github.com/llucsayols/tfg-percussive-similarity.git
-cd tfg-percussive-similarity
+git clone https://github.com/llucsayols/tfg-percussive-similarity-tool.git
+cd tfg-percussive-similarity-tool
 ```
 
 ### 2. Crea i activa l'entorn virtual
 
+Es recomana usar el nom `venv` o qualsevol altre nom estàndard:
+
 ```bash
-python3.11 -m venv venv-TFG
-source venv-TFG/bin/activate
+python3.11 -m venv venv
+source venv/bin/activate
 ```
 
 ### 3. Instal·la les dependències
@@ -52,21 +56,15 @@ sudo apt install ffmpeg -y
 
 ### 1. Descarrega FSD50K
 
-Descarrega el dataset FSD50K des de [Zenodo](https://zenodo.org/record/4060432) i descomprimeix els WAVs de desenvolupament a:
+Descarrega el dataset FSD50K des de [Zenodo](https://zenodo.org/record/4060432) i descomprimeix els WAVs de desenvolupament en qualsevol carpeta del teu sistema.
 
-```
-C:\TFG\Dataset\FSD50K.DEV_AUDIO\
-```
+### 2. Actualitza el path dels WAVs
 
-### 2. Actualitza els paths
-
-Als scripts `filter_dataset.py`, `extract_features.py` i `app_flask.py`, comprova que els paths apunten correctament a:
+Als scripts `filter_dataset.py`, `extract_features.py` i `app_flask.py`, actualitza la variable `WAV_DIR` perquè apunti a la carpeta on tens els WAVs de FSD50K:
 
 ```python
-WAV_DIR  = Path("/mnt/c/TFG/Dataset/FSD50K.DEV_AUDIO")
+WAV_DIR = Path("/ruta/al/teu/FSD50K.DEV_AUDIO")
 ```
-
-Modifica'ls si el teu dataset és en una ubicació diferent.
 
 ---
 
@@ -142,8 +140,7 @@ similarity-tool/
 ├── app_flask.py               # Servidor Flask (backend)
 ├── search.py                  # Mòdul de cerca per similitud
 ├── extract_features.py        # Extracció de features amb Music Extractor
-├── filter_dataset.py          # Filtratge de sons percussius del dataset
-└── venv-TFG/                  # Entorn virtual Python (no inclòs al repositori)
+└── filter_dataset.py          # Filtratge de sons percussius del dataset
 ```
 
 ---
