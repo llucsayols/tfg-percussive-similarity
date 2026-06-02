@@ -1,0 +1,47 @@
+{
+  "v1": {
+    "per_cat": {
+      "Bass_drum": 0.78,
+      "Snare_drum": 0.7,
+      "Hi-hat": 0.54,
+      "Cymbal": 0.44,
+      "Crash_cymbal": 0.56,
+      "Cowbell": 0.02,
+      "Tambourine": 0.42,
+      "Clapping": 0.94,
+      "Mallet_percussion": 0.74,
+      "Gong": 0.64
+    },
+    "mean": 0.578
+  },
+  "v2": {
+    "per_cat": {
+      "Bass_drum": 0.88,
+      "Snare_drum": 0.64,
+      "Hi-hat": 0.58,
+      "Cymbal": 0.64,
+      "Crash_cymbal": 0.56,
+      "Cowbell": 0.04,
+      "Tambourine": 0.42,
+      "Clapping": 0.98,
+      "Mallet_percussion": 0.74,
+      "Gong": 0.44
+    },
+    "mean": 0.592
+  },
+  "v3": {
+    "per_cat": {
+      "Bass_drum": 1.0,
+      "Snare_drum": 1.0,
+      "Hi-hat": 0.92,
+      "Cymbal": 1.0,
+      "Crash_cymbal": 0.88,
+      "Cowbell": 0.78,
+      "Tambourine": 0.96,
+      "Clapping": 1.0,
+      "Mallet_percussion": 1.0,
+      "Gong": 1.0
+    },
+    "mean": 0.954
+  }
+}

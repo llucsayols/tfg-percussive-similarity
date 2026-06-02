@@ -21,7 +21,7 @@ VERSIONS = {
         "type":   "music_extractor_selected",
     },
     "v2": {
-        "name":   "Selecció manual per domini",
+        "name":   "Selecció manual dels descriptors",
         "dir":    BASE_DIR / "versions" / "v2_personalized",
         "type":   "music_extractor",
     },
