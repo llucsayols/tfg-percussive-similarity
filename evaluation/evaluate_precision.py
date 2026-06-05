@@ -1,10 +1,11 @@
 """
 evaluate_precision.py
-Avaluació semàntica: Precision@10
+Avaluació semàntica: Precision@10 i Mean Average Precision (MAP)
 
 Per a cada versió (v1, v2, v3), extreu el vector de cada query del test set
-(sons del FSD50K eval set, independents de l'índex) i calcula quants dels
-10 resultats retornats pertanyen a la mateixa categoria que el so d'entrada.
+(sons del FSD50K eval set, independents de l'índex) i calcula:
+- Precision@10: quants dels 10 resultats retornats pertanyen a la mateixa categoria
+- MAP: mitjana de l'Average Precision, que té en compte l'ordre dels resultats
 
 Requereix haver executat prèviament:
     - build_test_set.py  → evaluation/results/test_queries.json
@@ -16,7 +17,6 @@ import numpy as np
 import pickle
 from pathlib import Path
 from scipy.spatial.distance import cdist
-from collections import defaultdict
 import pandas as pd
 import essentia.standard as es
 
@@ -24,7 +24,7 @@ import essentia.standard as es
 BASE_DIR     = Path("/home/llucsayols/similarity-tool")
 DATA_DIR     = BASE_DIR / "data"
 EVAL_WAV_DIR = Path("/mnt/c/TFG/Dataset/FSD50K.EVAL_AUDIO")
-EVAL_CSV     = Path("/mnt/c/TFG/Dataset/eval.csv")
+EVAL_CSV     = Path("/mnt/c/TFG/Dataset/FSD50K.ground_truth/eval.csv")
 RESULTS_DIR  = BASE_DIR / "evaluation" / "results"
 
 # ── Paràmetres ────────────────────────────────────────────────────────────
@@ -35,7 +35,6 @@ SPECIFIC_LABELS = [
     'Cowbell', 'Tambourine', 'Clapping', 'Mallet_percussion', 'Gong'
 ]
 
-# Versions a avaluar (sense v0)
 VERSIONS = {
     "v1": BASE_DIR / "versions" / "v1_variance_threshold",
     "v2": BASE_DIR / "versions" / "v2_personalized",
@@ -59,11 +58,6 @@ def get_categories_dev(sound_id):
 
 sound_categories = {sid: get_categories_dev(sid) for sid in sound_ids_list}
 print(f"Sons a l'índex: {len(sound_ids_list)}")
-
-# ── Carrega etiquetes del eval set (per les queries) ─────────────────────
-print("Carregant etiquetes del eval set...")
-df_eval = pd.read_csv(EVAL_CSV)
-df_eval["fname"] = df_eval["fname"].astype(str)
 
 # ── Carrega test queries ──────────────────────────────────────────────────
 with open(RESULTS_DIR / "test_queries.json") as f:
@@ -122,18 +116,38 @@ def extract_clap_embedding(wav_path):
         embedding = result.pooler_output
     return embedding.cpu().numpy().reshape(1, -1)
 
+# ── Càlcul de Precision@K i Average Precision ─────────────────────────────
+def compute_precision_at_k(top_k_ids, query_category, k=K):
+    """Precision@K: proporció dels k resultats que tenen la categoria del query."""
+    hits = sum(1 for sid in top_k_ids if query_category in sound_categories.get(sid, []))
+    return hits / k
+
+def compute_average_precision(top_k_ids, query_category):
+    """
+    Average Precision: mitjana de les precisions en cada posició on hi ha un hit.
+    Premia tenir els hits al principi del rànquing.
+    """
+    hits = 0
+    precision_sum = 0.0
+    for i, sid in enumerate(top_k_ids, start=1):
+        if query_category in sound_categories.get(sid, []):
+            hits += 1
+            precision_at_i = hits / i
+            precision_sum += precision_at_i
+    if hits == 0:
+        return 0.0
+    return precision_sum / hits
+
 # ── Funció principal d'avaluació ──────────────────────────────────────────
 def evaluate_version(version_name, version_dir):
-    print(f"\n{'='*55}")
+    print(f"\n{'='*60}")
     print(f"Versió: {version_name}")
-    print(f"{'='*55}")
+    print(f"{'='*60}")
 
-    # Carrega vectors de l'índex
     vectors = np.load(version_dir / "vectors_scaled.npy")
     with open(version_dir / "scaler.pkl", "rb") as f:
         scaler = pickle.load(f)
 
-    # Carrega keys (v1 i v2 usen Music Extractor)
     selector = None
     scalar_keys = None
     vector_keys = None
@@ -145,7 +159,7 @@ def evaluate_version(version_name, version_dir):
                 scalar_keys = json.load(f)
             with open(version_dir / "vector_keys.json") as f:
                 vector_keys = json.load(f)
-        else:  # v1 usa les keys de v0
+        else:
             with open(v0_dir / "scalar_keys.json") as f:
                 scalar_keys = json.load(f)
             with open(v0_dir / "vector_keys.json") as f:
@@ -153,19 +167,24 @@ def evaluate_version(version_name, version_dir):
             with open(version_dir / "selector.pkl", "rb") as f:
                 selector = pickle.load(f)
 
-    results_per_cat = {}
-    all_precisions  = []
+    precision_per_cat = {}
+    map_per_cat       = {}
+    all_precisions    = []
+    all_aps           = []
+
+    print(f"  {'Categoria':<25} {'P@10':<8} {'AP':<8}")
+    print(f"  {'-'*25} {'-'*8} {'-'*8}")
 
     for cat in SPECIFIC_LABELS:
         queries = test_queries.get(cat, [])
         cat_precisions = []
+        cat_aps        = []
 
         for query_id in queries:
             wav_path = EVAL_WAV_DIR / f"{query_id}.wav"
             if not wav_path.exists():
                 continue
 
-            # Extreu vector del query
             try:
                 if version_name == "v3":
                     query_vec = extract_clap_embedding(wav_path)
@@ -180,41 +199,52 @@ def evaluate_version(version_name, version_dir):
                 print(f"  Error query {query_id}: {e}")
                 continue
 
-            # Cerca els K veïns més propers
             distances = cdist(query_vec_scaled, vectors, metric="cosine")[0]
             top_k_idx = np.argsort(distances)[:K]
             top_k_ids = [sound_ids_list[i] for i in top_k_idx]
 
-            # Compta hits (mateixa categoria)
-            hits = sum(1 for sid in top_k_ids if cat in sound_categories.get(sid, []))
-            precision = hits / K
-            cat_precisions.append(precision)
+            p_at_k = compute_precision_at_k(top_k_ids, cat, k=K)
+            ap     = compute_average_precision(top_k_ids, cat)
 
-        mean_precision = np.mean(cat_precisions) if cat_precisions else 0.0
-        results_per_cat[cat] = round(mean_precision, 4)
+            cat_precisions.append(p_at_k)
+            cat_aps.append(ap)
+
+        mean_p  = np.mean(cat_precisions) if cat_precisions else 0.0
+        mean_ap = np.mean(cat_aps)        if cat_aps        else 0.0
+        precision_per_cat[cat] = round(mean_p, 4)
+        map_per_cat[cat]       = round(mean_ap, 4)
         all_precisions.extend(cat_precisions)
-        print(f"  {cat:<25} P@{K} = {mean_precision:.3f}")
+        all_aps.extend(cat_aps)
 
-    mean_all = np.mean(all_precisions) if all_precisions else 0.0
-    print(f"\n  {'MITJANA GLOBAL':<25} P@{K} = {mean_all:.3f}")
-    return results_per_cat, round(mean_all, 4)
+        print(f"  {cat:<25} {mean_p:<8.3f} {mean_ap:<8.3f}")
+
+    mean_p_all  = np.mean(all_precisions) if all_precisions else 0.0
+    mean_ap_all = np.mean(all_aps)        if all_aps        else 0.0
+    print(f"  {'-'*25} {'-'*8} {'-'*8}")
+    print(f"  {'MITJANA GLOBAL':<25} {mean_p_all:<8.3f} {mean_ap_all:<8.3f}")
+
+    return {
+        "precision_per_cat": precision_per_cat,
+        "map_per_cat":       map_per_cat,
+        "precision_mean":    round(mean_p_all, 4),
+        "map":               round(mean_ap_all, 4),
+    }
 
 # ── Execució ──────────────────────────────────────────────────────────────
-print("\n" + "="*55)
-print("AVALUACIÓ SEMÀNTICA — Precision@10")
-print("="*55)
+print("\n" + "="*60)
+print("AVALUACIÓ SEMÀNTICA — Precision@10 i MAP")
+print("="*60)
 
 all_results = {}
 for version_name, version_dir in VERSIONS.items():
     if not (version_dir / "vectors_scaled.npy").exists():
         print(f"\nVersió {version_name}: fitxers no trobats, saltant...")
         continue
-    results_per_cat, mean_all = evaluate_version(version_name, version_dir)
-    all_results[version_name] = {"per_cat": results_per_cat, "mean": mean_all}
+    all_results[version_name] = evaluate_version(version_name, version_dir)
 
-# ── Taula resum ───────────────────────────────────────────────────────────
+# ── Taula resum: Precision@10 ─────────────────────────────────────────────
 print("\n\n" + "="*60)
-print("TAULA RESUM — Precision@10 per versió")
+print("TAULA RESUM — Precision@10")
 print("="*60)
 
 versions_available = list(all_results.keys())
@@ -225,18 +255,39 @@ print("-" * len(header))
 for cat in SPECIFIC_LABELS:
     row = f"{cat:<25}"
     for v in versions_available:
-        val = all_results[v]["per_cat"].get(cat, 0.0)
+        val = all_results[v]["precision_per_cat"].get(cat, 0.0)
         row += f"  {val:<8.3f}"
     print(row)
 
 print("-" * len(header))
 mean_row = f"{'MITJANA GLOBAL':<25}"
 for v in versions_available:
-    mean_row += f"  {all_results[v]['mean']:<8.3f}"
+    mean_row += f"  {all_results[v]['precision_mean']:<8.3f}"
+print(mean_row)
+
+# ── Taula resum: MAP ──────────────────────────────────────────────────────
+print("\n" + "="*60)
+print("TAULA RESUM — Mean Average Precision (MAP)")
+print("="*60)
+
+print(header)
+print("-" * len(header))
+
+for cat in SPECIFIC_LABELS:
+    row = f"{cat:<25}"
+    for v in versions_available:
+        val = all_results[v]["map_per_cat"].get(cat, 0.0)
+        row += f"  {val:<8.3f}"
+    print(row)
+
+print("-" * len(header))
+mean_row = f"{'MAP GLOBAL':<25}"
+for v in versions_available:
+    mean_row += f"  {all_results[v]['map']:<8.3f}"
 print(mean_row)
 
 # ── Guarda resultats ──────────────────────────────────────────────────────
-output_path = RESULTS_DIR / "precision_at_10_results.json"
+output_path = RESULTS_DIR / "evaluation_results.json"
 with open(output_path, "w") as f:
     json.dump(all_results, f, indent=2)
 print(f"\n✓ Resultats guardats a {output_path}")
