@@ -31,8 +31,6 @@ cd tfg-percussive-similarity-tool
 
 ### 2. Crea i activa l'entorn virtual
 
-Es recomana usar el nom `venv` o qualsevol altre nom estàndard:
-
 ```bash
 python3.11 -m venv venv
 source venv/bin/activate
@@ -40,10 +38,8 @@ source venv/bin/activate
 
 ### 3. Instal·la les dependències
 
-El sistema utilitza **Essentia** (desenvolupada pel Music Technology Group de la UPF) com a llibreria principal per a l'extracció de descriptors d'àudio, juntament amb altres llibreries de processament i aprenentatge automàtic:
-
 ```bash
-pip install essentia flask pydub scipy scikit-learn numpy pandas requests librosa transformers torch torchaudio soundfile faiss-cpu
+pip install -r requirements.txt
 ```
 
 ### 4. Instal·la ffmpeg
@@ -59,9 +55,9 @@ sudo apt install ffmpeg -y
 
 ### 1. Descarrega FSD50K
 
-Descarrega el dataset FSD50K des de [Zenodo](https://zenodo.org/record/4060432) i descomprimeix els WAVs de desenvolupament en qualsevol carpeta del teu sistema.
+Descarrega el dataset FSD50K des de [Zenodo](https://zenodo.org/record/4060432) i descomprimeix els WAVs de desenvolupament i avaluació.
 
-### 2. Actualitza el path dels WAVs
+### 2. Actualitza els paths dels WAVs
 
 Als scripts `filter_dataset.py`, `extract_features.py` i `app_flask.py`, actualitza la variable `WAV_DIR` perquè apunti a la carpeta on tens els WAVs de FSD50K:
 
@@ -93,20 +89,11 @@ Extreu les features de cada WAV i les guarda com a JSONs a `data/features_wav/`.
 
 ### Pas 3 — Construeix els índexs de les versions
 
-Executa cada versió per separat:
-
 ```bash
-# v0 — Music Extractor complet
 python versions/v0_music_extractor_complet/build_index_v0.py
-
-# v1 — Selecció automàtica (VarianceThreshold)
 python versions/v1_variance_threshold/build_index_v1.py
-
-# v2 — Selecció manual per domini
 python versions/v2_personalized/build_index_v2.py
-
-# v3 — CLAP (deep learning) — pot trigar 30-60 minuts
-python versions/v3_clap/build_index_v3.py
+python versions/v3_clap/build_index_v3.py   # pot trigar 30-60 minuts
 ```
 
 ---
@@ -121,15 +108,38 @@ Obre el navegador a `http://127.0.0.1:5000`
 
 ---
 
+## Avaluació
+
+### Construir el test set (sons del FSD50K eval set)
+
+```bash
+python evaluation/extract_features_eval.py
+python evaluation/build_test_set.py
+```
+
+### Executar l'avaluació semàntica (Precision@10 i MAP)
+
+```bash
+python evaluation/evaluate_precision.py
+```
+
+---
+
 ## Estructura del repositori
 
 ```
 similarity-tool/
 ├── data/
-│   ├── features_wav/          # JSONs amb features (generats per extract_features.py)
-│   ├── available_ids.json     # IDs filtrats (generat per filter_dataset.py)
+│   ├── features_wav/          # JSONs amb features per cada so
+│   ├── available_ids.json     # IDs filtrats
 │   ├── dev.csv                # Metadades FSD50K
-│   └── sound_ids_list.json    # IDs indexats en ordre
+│   └── sound_ids_list.json    # 2526 IDs indexats
+├── evaluation/
+│   ├── features_eval/         # Features del conjunt d'avaluació
+│   ├── results/               # Resultats (P@10, MAP)
+│   ├── build_test_set.py      # Generació del test set
+│   ├── evaluate_precision.py  # Avaluació semàntica
+│   └── extract_features_eval.py
 ├── versions/
 │   ├── v0_music_extractor_complet/   # Music Extractor complet (1022 dims)
 │   ├── v1_variance_threshold/        # VarianceThreshold automàtic (834 dims)
@@ -140,10 +150,11 @@ similarity-tool/
 │   └── styles.css             # Estils de la interfície
 ├── templates/
 │   └── index.html             # Interfície web
-├── app_flask.py               # Servidor Flask (backend)
+├── app_flask.py               # Servidor Flask
 ├── search.py                  # Mòdul de cerca per similitud
-├── extract_features.py        # Extracció de features amb Music Extractor
-└── filter_dataset.py          # Filtratge de sons percussius del dataset
+├── extract_features.py        # Extracció de features
+├── filter_dataset.py          # Filtratge del dataset
+└── requirements.txt           # Dependències del projecte
 ```
 
 ---
@@ -152,4 +163,4 @@ similarity-tool/
 
 - Els fitxers de dades grans (`features_wav/`, `vectors_scaled.npy`, `scaler.pkl`) no s'inclouen al repositori per limitacions de mida. Cal generar-los localment seguint la pipeline d'execució.
 - El model CLAP (v3) es descarrega automàticament de HuggingFace la primera vegada que s'executa `build_index_v3.py`.
-- La interfície requereix connexió a Internet per carregar les imatges de forma d'ona de Freesound.
+- La interfície requereix connexió a Internet per obtenir les metadades dels sons de Freesound.

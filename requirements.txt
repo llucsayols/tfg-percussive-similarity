@@ -1,0 +1,24 @@
+# Audio analysis
+essentia==2.1b6.dev1389
+librosa==0.11.0
+soundfile==0.13.1
+pydub==0.25.1
+
+# Deep learning (CLAP)
+torch>=2.0.0
+transformers>=4.30.0
+tokenizers>=0.13.0
+
+# Machine learning
+scikit-learn>=1.0.0
+numpy>=1.24.0
+scipy>=1.10.0
+pandas>=2.0.0
+
+# Web server
+Flask>=3.0.0
+
+# Utilities
+requests>=2.28.0
+PyYAML>=6.0
+tqdm>=4.60.0
